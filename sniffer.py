@@ -1,7 +1,17 @@
 import socket
 import struct
 
+NL1 = '\n'
+NL2 = '\n\n'
+NL3 = '\n\n\n'
+TAB1 = '\t'
+TAB2 = '\t\t'
+TAB3 = '\t\t\t'
+ETH_TYPE = {
+    '0x0800':'IPv4',
+    '0x0806': 'ARP'
 
+}
 
 def sniff():
     conn = socket.socket(socket.AF_PACKET,socket.SOCK_RAW,socket.ntohs(3))
@@ -12,7 +22,11 @@ def sniff():
         dest_mac_addr,source_mac_addr,ether_type,packet = ethernet_frame(raw_data)
 
         ip_version,ttl,protocol,source_ip,dest_ip,segment = ipv4_network_packet(packet)
-        tcp_segment(segment)
+        source_port,dest_port,seq_number,ack_number,urg,ack,psh,rst,syn,fin,data = tcp_segment(segment)
+        print(data)
+
+
+
 
 
 
@@ -23,6 +37,12 @@ def ethernet_frame(frame):
     source_mac_addr=format_mac(source_mac_addr)
 
     ether_type = format_hex(ether_type)
+    if(ether_type in ETH_TYPE.keys()):
+        ether_type = ETH_TYPE[ether_type]
+    print("-------------------------------------------------")
+    print(NL2+ "Ethernet Frame(Layer 2):")
+    print(TAB1 + "Destination Mac: {}".format(dest_mac_addr) +NL1+TAB1 + "Source Mac: {}".format(source_mac_addr))
+    print(TAB1 + "EtherType: {}".format(ether_type))
 
 
     return dest_mac_addr,source_mac_addr,ether_type,frame[14:]
@@ -38,10 +58,33 @@ def ipv4_network_packet(packet):
     source_ip = format_ip(source_ip)
     dest_ip = format_ip(dest_ip)
 
+
+    print(NL2 + "Network Packet (Layer 3):")
+    print(TAB1 + "Destination Ip : {}".format(dest_ip) + NL1 + TAB1 + "Source Ip: {}".format(source_ip))
+    print(TAB1 + "Ip Version: {} TTL: {} protocol: {} ".format(version,ttl,protocol))
+
     return version,ttl,protocol,source_ip,dest_ip,packet[ihl:]
 
 
+def tcp_segment(segment):
+    source_port,dest_port,seq_number,ack_number,header_length_flags= struct.unpack("! H H I I H",segment[0:14])
 
+    header_length = (header_length_flags >> 12) * 4
+    urg = (header_length_flags >> 5) & 1
+    ack = (header_length_flags >> 4) & 1
+    psh = (header_length_flags >> 3) & 1
+    rst = (header_length_flags >> 2) & 1
+    syn = (header_length_flags >> 1) & 1
+    fin = (header_length_flags) & 1
+
+    data = segment[header_length:]
+
+    print(NL2 + "TCP Segment(Layer 4):")
+    print(TAB1 + "Destination Port : {}".format(dest_port) + NL1 + TAB1 + "Source Port: {}".format(source_port))
+    print(TAB1 + "Acknowledgement Number: {} Sequence Number: {}".format(ack_number,seq_number))
+    print(TAB1 + "Flags :::: urg: {} ack: {} psh: {} rst: {} syn: {} fin: {}".format(urg,ack,psh,rst,syn,fin))
+
+    return source_port,dest_port,seq_number,ack_number,urg,ack,psh,rst,syn,fin,data
 
 
 
@@ -52,6 +95,8 @@ def format_mac(mac):
     return ":".join(formatted_mac).upper()
 
 
+
+## Utility functions
 def format_hex(data):
     formatted_hex = map("{:02x}".format,data)
     return "0x" + "".join(formatted_hex).upper()
@@ -60,8 +105,10 @@ def format_ip(ip):
     formatted_ip = map(str,ip)
     return ".".join(formatted_ip)
 
-def tcp_segment(segment):
-    source_port,dest_port = struct.unpack("! H H",segment[0:4])
+
+
+
+
 
 
 sniff()
