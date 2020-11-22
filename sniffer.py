@@ -9,7 +9,17 @@ TAB2 = '\t\t'
 TAB3 = '\t\t\t'
 ETH_TYPE = {
     '0x0800':'IPv4',
-    '0x0806': 'ARP'
+    '0x0806': 'ARP',
+    '0x0842': 'Wake-on-LAN',
+    '0x22F0': 'Audio Video Transport Protocol',
+    '0x22F3': 'IETF TRILL Protocol',
+    '0x22EA': 'Stream Reservation Protocol',
+    '0x6002': 'DEC MOP RC',
+    '0x6003': 'DECnet Phase IV, DNA Routing',
+    '0x6004': 'DEC LAT',
+    '0x8035': 'Reverse Address Resolution Protocol ',
+    '0x809B': 'AppleTalk',
+    '0x80F3': 'AppleTalk Address Resolution Protocol (AARP)'
 
 }
 
@@ -22,8 +32,19 @@ def sniff():
         dest_mac_addr,source_mac_addr,ether_type,packet = ethernet_frame(raw_data)
 
         ip_version,ttl,protocol,source_ip,dest_ip,segment = ipv4_network_packet(packet)
-        source_port,dest_port,seq_number,ack_number,urg,ack,psh,rst,syn,fin,data = tcp_segment(segment)
-        print(data)
+        if(protocol==17):
+            source_port,dest_port,data = udp_segment(segment);
+            print(data)
+        else:
+
+            source_port, dest_port, seq_number, ack_number, urg, ack, psh, rst, syn, fin, data = tcp_segment(segment)
+            print(data)
+
+
+
+
+
+
 
 
 
@@ -85,6 +106,17 @@ def tcp_segment(segment):
     print(TAB1 + "Flags :::: urg: {} ack: {} psh: {} rst: {} syn: {} fin: {}".format(urg,ack,psh,rst,syn,fin))
 
     return source_port,dest_port,seq_number,ack_number,urg,ack,psh,rst,syn,fin,data
+
+
+def udp_segment(segment):
+    source_port,dest_port,length= struct.unpack("! H H H",segment[0:6])
+
+
+    print(NL2 + "UDP Segment(Layer 4):")
+    print(TAB1 + "Destination Port : {}".format(dest_port) + NL1 + TAB1 + "Source Port: {}".format(source_port))
+
+    data = segment[8:]
+    return source_port,dest_port,data
 
 
 
